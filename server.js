@@ -527,9 +527,8 @@ function updateCounts(side) {
 
 function computeCondition() {
   const hostiles = state.radar.air.hostile + state.radar.naval.hostile;
-  const unknowns = state.radar.air.unknown + state.radar.naval.unknown;
   if (hostiles >= 3) return 'RED';
-  if (hostiles >= 1 || unknowns >= 6) return 'AMBER';
+  if (hostiles >= 1) return 'AMBER';
   return 'GREEN';
 }
 
