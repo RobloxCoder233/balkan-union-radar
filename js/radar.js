@@ -9,11 +9,11 @@
     air: {
       key: 'air',
       range: 250,
-      lat: 44.787,
-      lon: 20.448,
+      lat: 45.815,
+      lon: 15.982,
       rings: [50, 100, 150, 200, 250],
       sweep: 6,
-      center: 'BELGRADE'
+      center: 'ZAGREB'
     },
     naval: {
       key: 'naval',
@@ -44,6 +44,9 @@
     map: null,
     blips: null,
     labels: null,
+    strikeLayer: null,
+    strikeTimer: 0,
+    countryPick: null,
     trails: { air: new Map(), naval: new Map() }
   };
 
@@ -280,7 +283,7 @@
     return [lat2 / rad, ((lon2 / rad + 540) % 360) - 180];
   }
 
-  function theatreCoverage(lat, lon, km, label, naval) {
+  function theatreCoverage(lat, lon, km, label, naval, labelLat) {
     L.circle([lat, lon], {
       radius: km * 1000,
       pane: 'rangePane',
@@ -293,7 +296,9 @@
       fillOpacity: 0.05
     }).addTo(theatre.map);
 
-    L.marker([lat + (km / 111.32) * 0.9, lon], {
+    if (!label) return;
+
+    L.marker([typeof labelLat === 'number' ? labelLat : lat + (km / 111.32) * 0.9, lon], {
       pane: 'rangePane',
       interactive: false,
       keyboard: false,
@@ -309,7 +314,7 @@
   function theatreFactionLabels() {
     var factions = (window.BU_WORLD && window.BU_WORLD.factions) || {};
     [
-      ['BALKAN UNION', 42.4, 25.4, 'balkan'],
+      ['BALKAN UNION', 44.55, 20.3, 'balkan'],
       ['DUTCH UNION', 52.3, 5.6, 'dutch'],
       ["KINGDOM OF CARL'S SPELLING BEE", 46.7, 1.8, 'csb'],
       ['UNITED KINGDOM', 54.3, -2.8, 'uk'],
@@ -329,6 +334,71 @@
         })
       }).addTo(theatre.map);
     });
+  }
+
+  function theatreStrikeColor(side) {
+    return side === 'du' ? '#ff5aa8' : '#5aa2ff';
+  }
+
+  function theatreStrikeFrame(payload) {
+    if (!theatre.strikeLayer) return;
+    theatre.strikeLayer.clearLayers();
+    if (!payload || !payload.configured) return;
+    var items = (payload.threats || []).concat(payload.strikes || []);
+    var seen = {};
+    var drawn = 0;
+    items.forEach(function (item) {
+      if (!item || !item.position || !item.target) return;
+      if (item.status && ['inbound', 'active', 'engaged'].indexOf(item.status) < 0) return;
+      if (seen[item.id]) return;
+      seen[item.id] = true;
+      if (drawn >= 28) return;
+      drawn++;
+      var color = theatreStrikeColor(item.side);
+      if (item.origin) {
+        L.polyline([[item.origin.lat, item.origin.lng], [item.position.lat, item.position.lng]], {
+          pane: 'strikePane',
+          color: color,
+          weight: 1.1,
+          opacity: 0.5,
+          dashArray: '2 7',
+          interactive: false
+        }).addTo(theatre.strikeLayer);
+      }
+      L.circleMarker([item.target.lat, item.target.lng], {
+        pane: 'strikePane',
+        radius: 7,
+        color: color,
+        weight: 1,
+        opacity: 0.8,
+        fill: false,
+        interactive: false
+      }).addTo(theatre.strikeLayer);
+      L.marker([item.position.lat, item.position.lng], {
+        pane: 'strikePane',
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: 'mp-munition',
+          html: '<span class="mp-round" style="--c:' + color + '"></span>',
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
+        })
+      }).addTo(theatre.strikeLayer);
+    });
+  }
+
+  function pollStrikes() {
+    fetch('/api/public-strikes', { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) { if (data) theatreStrikeFrame(data); })
+      .catch(function () { });
+  }
+
+  function startStrikeFeed() {
+    if (theatre.strikeTimer) return;
+    pollStrikes();
+    theatre.strikeTimer = setInterval(pollStrikes, 1200);
   }
 
   function theatreCsbBorders() {
@@ -416,18 +486,40 @@
 
     var factions = (window.BU_WORLD && window.BU_WORLD.factions) || {};
 
+    function countryStyle(feature, active) {
+      var faction = factions[feature.properties.faction] ||
+        factions.neutral || { fill: '#14211e', line: '#33524b' };
+      return {
+        color: active ? '#a9ffea' : (faction.line || '#33524b'),
+        weight: active ? 1.8 : 0.7,
+        opacity: active ? 1 : 0.72,
+        fillColor: faction.fill || '#14211e',
+        fillOpacity: active ? (feature.properties.union ? 0.5 : 0.38) :
+          (feature.properties.union ? 0.34 : 0.2)
+      };
+    }
+
     L.geoJSON(window.BU_EUROPE, {
-      interactive: false,
-      style: function (feature) {
-        var faction = factions[feature.properties.faction] ||
-          factions.neutral || { fill: '#14211e', line: '#33524b' };
-        return {
-          color: faction.line || '#33524b',
-          weight: 0.9,
-          opacity: 0.9,
-          fillColor: faction.fill || '#14211e',
-          fillOpacity: feature.properties.union ? 0.42 : 0.28
-        };
+      style: function (feature) { return countryStyle(feature, false); },
+      onEachFeature: function (feature, layer) {
+        var props = feature.properties || {};
+        var label = props.name + (props.union ? ' · Balkan Union' : ' · Sovereign state');
+        layer.bindTooltip(label, {
+          sticky: true,
+          direction: 'top',
+          className: 'map-country-tip',
+          opacity: 0.95
+        });
+        layer.on('mouseover', function () {
+          layer.setStyle(countryStyle(feature, true));
+        });
+        layer.on('mouseout', function () {
+          layer.setStyle(countryStyle(feature, false));
+        });
+        layer.on('click', function () {
+          theatre.countryPick = { name: props.name, union: !!props.union };
+          theatreReadout();
+        });
       }
     }).addTo(map);
 
@@ -441,9 +533,27 @@
 
     theatreCsbBorders();
 
-    theatreCoverage(44.787, 20.448, 250, 'AIR WATCH · BELGRADE · 250 KM', false);
-    theatreCoverage(42.45, 18.55, 300, 'NAVAL WATCH · ADRIATIC · 300 KM', true);
+    theatreCoverage(45.815, 15.982, 320, 'CAPITAL COMMAND · 320 KM', false);
+    theatreCoverage(45.815, 15.982, 150, '', false);
+    theatreCoverage(42.45, 18.55, 300, 'ADRIATIC WATCH · 300 KM', true, 41.85);
     theatreFactionLabels();
+
+    L.marker([45.815, 15.982], {
+      pane: 'rangePane',
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({
+        className: 'map-capital',
+        html: '<span><i></i>CAPITAL · ZAGREB</span>',
+        iconSize: [0, 0],
+        iconAnchor: [0, 0]
+      })
+    }).addTo(map);
+
+    map.createPane('strikePane');
+    map.getPane('strikePane').style.zIndex = 630;
+    map.getPane('strikePane').style.pointerEvents = 'none';
+    theatre.strikeLayer = L.layerGroup().addTo(map);
 
     theatre.trailLayer = L.layerGroup().addTo(map);
     theatre.blips = L.layerGroup().addTo(map);
@@ -570,7 +680,12 @@
       var contact = selectedContact(key);
       if (contact) parts.push(contactDetail(key, contact));
     });
-    node.textContent = parts.length ? parts.join('   ·   ') : 'NO TRACK SELECTED · CLICK A CONTACT';
+    var fallback = theatre.countryPick ?
+      theatre.countryPick.name.toUpperCase() + ' · ' +
+        (theatre.countryPick.union ? 'BALKAN UNION MEMBER' : 'SOVEREIGN STATE') +
+        ' · WAR ROOM TO DECLARE' :
+      'NO TRACK SELECTED · CLICK A CONTACT';
+    node.textContent = parts.length ? parts.join('   ·   ') : fallback;
   }
 
   function setView(view, persist) {
@@ -1045,10 +1160,10 @@
   var dateFormat = null;
   try {
     timeFormat = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Belgrade', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      timeZone: 'Europe/Zagreb', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
     });
     dateFormat = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Belgrade', weekday: 'short', day: '2-digit', month: 'short'
+      timeZone: 'Europe/Zagreb', weekday: 'short', day: '2-digit', month: 'short'
     });
   } catch (err) {
     timeFormat = null;
@@ -1412,6 +1527,7 @@
       catch (err) { useStream = true; }
       if (useStream) connectStream();
       refresh();
+      startStrikeFeed();
       pollTimer = setInterval(function () {
         if (mode !== 'live') refresh();
       }, 6000);

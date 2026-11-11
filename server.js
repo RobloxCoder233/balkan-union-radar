@@ -310,6 +310,44 @@ async function handleCsbProxy(req, res, resource, url) {
   }
 }
 
+function strikeFields(item) {
+  return {
+    id: item.id,
+    side: item.side,
+    status: item.status,
+    type: item.type,
+    weapon: item.weapon ? item.weapon.name : '',
+    alert_class: item.alert_class || '',
+    progress: item.progress,
+    eta_seconds: item.eta_seconds,
+    position: item.current_position || null,
+    origin: item.origin ? { lat: item.origin.lat, lng: item.origin.lng, name: item.origin.name, kind: item.origin.kind } : null,
+    target: item.target ? { lat: item.target.lat, lng: item.target.lng, name: item.target.name } : null
+  };
+}
+
+async function handlePublicStrikes(req, res) {
+  const base = { configured: !!CSB_API_KEY, at: Date.now(), strikes: [], threats: [] };
+  if (!CSB_API_KEY) return json(res, 200, base);
+  const params = new URLSearchParams({ limit: '60' });
+  try {
+    const results = await Promise.all([
+      fetchCsb('strikes', params),
+      fetchCsb('threats', params)
+    ]);
+    const strikes = (JSON.parse(results[0].body).strikes || []).slice(0, 60).map(strikeFields);
+    const threats = (JSON.parse(results[1].body).threats || []).slice(0, 60).map(strikeFields);
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    res.end(JSON.stringify({ configured: true, at: Date.now(), strikes: strikes, threats: threats }));
+  } catch (err) {
+    json(res, 200, Object.assign({}, base, { error: 'uplink unreachable' }));
+  }
+}
+
 function publicRadarState() {
   const radar = state.radar;
   return {
@@ -441,9 +479,8 @@ function clampNumber(value, min, max) {
 
 function randomAffinity() {
   const roll = Math.random();
-  if (roll < 0.3) return 'hostile';
-  if (roll < 0.62) return 'unknown';
-  if (roll < 0.88) return 'friendly';
+  if (roll < 0.34) return 'unknown';
+  if (roll < 0.78) return 'friendly';
   return 'civil';
 }
 
@@ -497,10 +534,10 @@ function computeCondition() {
 }
 
 function seedRadar() {
-  ['hostile', 'unknown', 'friendly', 'unknown', 'civil'].forEach(function (affinity) {
+  ['unknown', 'unknown', 'friendly', 'unknown', 'civil'].forEach(function (affinity) {
     spawnContact('air', affinity);
   });
-  ['hostile', 'friendly', 'unknown', 'civil'].forEach(function (affinity) {
+  ['unknown', 'friendly', 'unknown', 'civil'].forEach(function (affinity) {
     spawnContact('naval', affinity);
   });
   updateCounts('air');
@@ -693,7 +730,7 @@ function handlePanelAction(req, res, action) {
       }
       if (type === 'drill') {
         const scope = body.payload && body.payload.scope === 'naval' ? 'naval' : 'air';
-        for (let i = 0; i < 3; i++) spawnContact(scope, 'hostile');
+        for (let i = 0; i < 3; i++) spawnContact(scope, 'unknown');
         updateCounts(scope);
         pushOrder('drill', { scope: scope });
         return { scope: scope };
@@ -777,6 +814,9 @@ const server = http.createServer(function (req, res) {
   }
   if (pathname === '/api/state' && method === 'GET') {
     return json(res, 200, publicRadarState());
+  }
+  if (pathname === '/api/public-strikes' && method === 'GET') {
+    return handlePublicStrikes(req, res);
   }
   if (pathname === '/api/orders' && method === 'GET') {
     const since = Number(url.searchParams.get('since') || 0);
