@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balkan Union — Air &amp; Naval Radar</title>
+  <meta name="description" content="Fictional Balkan Union air and naval radar console. Live scope picture, tracks and defence condition. Not real data.">
+  <meta name="theme-color" content="#04080a">
+  <meta name="bu-uplink" content="auto">
+  <link rel="icon" href="assets/flag.png">
+  <link rel="apple-touch-icon" href="assets/flag.png">
+  <link rel="stylesheet" href="assets/vendor/leaflet.css">
+  <link rel="stylesheet" href="css/radar.css?v=4">
+</head>
+<body>
+  <div class="radar-app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-flag">
+          <img src="assets/flag.png" alt="Flag of the Balkan Union">
+        </div>
+        <div class="brand-text">
+          <strong>BALKAN UNION</strong>
+          <span>AIR &amp; NAVAL RADAR NETWORK</span>
+        </div>
+      </div>
+
+      <div class="net-summary" aria-hidden="true">
+        <span>AIR <b id="hdrAir">0</b></span>
+        <i></i>
+        <span>SEA <b id="hdrNaval">0</b></span>
+        <i></i>
+        <span class="is-hostile">HOSTILE <b id="hdrHostile">0</b></span>
+      </div>
+
+      <div class="topbar-right">
+        <div class="view-switch" role="group" aria-label="Display mode">
+          <button type="button" data-view="map">THEATRE MAP</button>
+          <button type="button" data-view="scopes">SCOPES</button>
+        </div>
+        <span class="silence-flag" id="silenceFlag" hidden>SIREN SILENCED</span>
+        <div class="condition" id="conditionBadge" data-cond="GREEN" role="status" aria-live="polite">
+          <span class="condition-dot" aria-hidden="true"></span>
+          <span class="condition-label">COND</span>
+          <strong id="conditionText">GREEN</strong>
+        </div>
+        <button class="audio-btn" id="audioBtn" type="button" aria-pressed="false">
+          <span class="audio-dot" aria-hidden="true"></span>
+          <span id="audioLabel">AUDIO OFF</span>
+        </button>
+        <div class="clock">
+          <strong id="clockTime">--:--:--</strong>
+          <span id="clockDate">—</span>
+          <small>UNION TIME · CET</small>
+        </div>
+      </div>
+    </header>
+
+    <main class="stage" id="stage" data-view="map">
+      <section class="scope-card" id="scope-air" data-scope="air" aria-labelledby="airTitle">
+        <div class="scope-head">
+          <div class="scope-title">
+            <h1 id="airTitle">AIR SCOPE</h1>
+            <p>BELGRADE AIR WATCH · SECTOR SE · 250 KM</p>
+          </div>
+          <span class="scope-state" id="airState"><i></i>SCANNING</span>
+        </div>
+
+        <div class="scope-stage">
+          <svg class="ppi" viewBox="0 0 1000 1000" role="img" aria-label="Air radar scope centred on Belgrade, 250 kilometre range">
+            <defs>
+              <clipPath id="clip-air"><circle cx="500" cy="500" r="438"></circle></clipPath>
+            </defs>
+            <circle class="scope-face" cx="500" cy="500" r="468"></circle>
+            <circle class="scope-rim" cx="500" cy="500" r="468"></circle>
+            <g clip-path="url(#clip-air)">
+              <circle class="scope-sea" cx="500" cy="500" r="438"></circle>
+              <g class="land-layer" data-geo="air"></g>
+              <g class="grid-layer" data-grid="air"></g>
+              <g class="trail-layer" data-trails="air"></g>
+              <g class="sweep-layer" data-sweep="air"></g>
+              <g class="blip-layer" data-blips="air"></g>
+            </g>
+            <g class="center-mark" aria-hidden="true">
+              <circle cx="500" cy="500" r="4"></circle>
+              <circle cx="500" cy="500" r="17"></circle>
+              <path d="M500 474v10M500 516v10M474 500h10M516 500h10"></path>
+              <text x="500" y="545" text-anchor="middle">BELGRADE</text>
+            </g>
+            <g class="compass" aria-hidden="true">
+              <text x="500" y="26" text-anchor="middle">N</text>
+              <text x="982" y="506" text-anchor="middle">E</text>
+              <text x="500" y="992" text-anchor="middle">S</text>
+              <text x="18" y="506" text-anchor="middle">W</text>
+            </g>
+          </svg>
+          <div class="scope-corners" aria-hidden="true">
+            <span>MODE 3/A · IFF ON</span>
+            <span>BRG TRUE · RNG 250 KM</span>
+            <span>GAIN AUTO · CLUTTER LOW</span>
+            <span>44°47′N 20°26′E</span>
+          </div>
+          <div class="scope-empty" id="airEmpty">NO CONTACTS · SCANNING</div>
+          <div class="scope-alert" id="airDrill" hidden>EXERCISE · INBOUND TRACKS</div>
+        </div>
+
+        <footer class="scope-foot">
+          <div class="scope-readout">
+            <span class="readout-tag">TRACK</span>
+            <span id="airSelected">NO TRACK SELECTED · CLICK A CONTACT</span>
+          </div>
+          <div class="scope-stats">
+            <div><span>CONTACTS</span><strong id="airTotal">0</strong></div>
+            <div><span>HOSTILE</span><strong id="airHostile" class="is-hostile">0</strong></div>
+            <div><span>UNKNOWN</span><strong id="airUnknown">0</strong></div>
+            <div><span>NEAREST</span><strong id="airNearest">—</strong></div>
+          </div>
+        </footer>
+      </section>
+
+      <section class="scope-card" id="scope-naval" data-scope="naval" aria-labelledby="navalTitle">
+        <div class="scope-head">
+          <div class="scope-title">
+            <h2 id="navalTitle">NAVAL SCOPE</h2>
+            <p>ADRIATIC SEA WATCH · SURFACE &amp; SUB-SURFACE · 300 KM</p>
+          </div>
+          <span class="scope-state" id="navalState"><i></i>SCANNING</span>
+        </div>
+
+        <div class="scope-stage">
+          <svg class="ppi" viewBox="0 0 1000 1000" role="img" aria-label="Naval radar scope centred on the Adriatic, 300 kilometre range">
+            <defs>
+              <clipPath id="clip-naval"><circle cx="500" cy="500" r="438"></circle></clipPath>
+            </defs>
+            <circle class="scope-face" cx="500" cy="500" r="468"></circle>
+            <circle class="scope-rim" cx="500" cy="500" r="468"></circle>
+            <g clip-path="url(#clip-naval)">
+              <circle class="scope-sea" cx="500" cy="500" r="438"></circle>
+              <g class="land-layer" data-geo="naval"></g>
+              <g class="grid-layer" data-grid="naval"></g>
+              <g class="trail-layer" data-trails="naval"></g>
+              <g class="sweep-layer" data-sweep="naval"></g>
+              <g class="blip-layer" data-blips="naval"></g>
+            </g>
+            <g class="center-mark" aria-hidden="true">
+              <circle cx="500" cy="500" r="4"></circle>
+              <circle cx="500" cy="500" r="17"></circle>
+              <path d="M500 474v10M500 516v10M474 500h10M516 500h10"></path>
+              <text x="500" y="545" text-anchor="middle">ADRIATIC</text>
+            </g>
+            <g class="compass" aria-hidden="true">
+              <text x="500" y="26" text-anchor="middle">N</text>
+              <text x="982" y="506" text-anchor="middle">E</text>
+              <text x="500" y="992" text-anchor="middle">S</text>
+              <text x="18" y="506" text-anchor="middle">W</text>
+            </g>
+          </svg>
+          <div class="scope-corners" aria-hidden="true">
+            <span>MODE SURFACE + SUB</span>
+            <span>BRG TRUE · RNG 300 KM</span>
+            <span>SONAR PASSIVE · ACTIVE LOW</span>
+            <span>42°27′N 18°33′E</span>
+          </div>
+          <div class="scope-empty" id="navalEmpty">NO CONTACTS · SCANNING</div>
+          <div class="scope-alert" id="navalDrill" hidden>EXERCISE · INBOUND TRACKS</div>
+        </div>
+
+        <footer class="scope-foot">
+          <div class="scope-readout">
+            <span class="readout-tag">TRACK</span>
+            <span id="navalSelected">NO TRACK SELECTED · CLICK A CONTACT</span>
+          </div>
+          <div class="scope-stats">
+            <div><span>CONTACTS</span><strong id="navalTotal">0</strong></div>
+            <div><span>HOSTILE</span><strong id="navalHostile" class="is-hostile">0</strong></div>
+            <div><span>UNKNOWN</span><strong id="navalUnknown">0</strong></div>
+            <div><span>NEAREST</span><strong id="navalNearest">—</strong></div>
+          </div>
+        </footer>
+      </section>
+
+      <section class="theatre-view" id="theatreView" aria-label="Whole theatre radar map">
+        <div id="theatreMap"></div>
+        <div class="theatre-veil" aria-hidden="true"></div>
+
+        <div class="theatre-hud">
+          <div class="hud-block">
+            <span class="hud-tag">THEATRE PICTURE</span>
+            <div class="hud-legend">
+              <span><i class="sw sw-air"></i>AIR COVERAGE · 250 KM</span>
+              <span><i class="sw sw-naval"></i>NAVAL COVERAGE · 300 KM</span>
+              <span><i class="sw sw-frontier"></i>UNION FRONTIER</span>
+              <span><i class="sw sw-csb"></i>CSB SECTOR BORDERS</span>
+              <span><i class="sw sw-du"></i>DUTCH UNION SECTOR BORDERS</span>
+            </div>
+          </div>
+          <div class="hud-stats">
+            <div><span>AIR</span><strong id="mapAir">0</strong></div>
+            <div><span>SEA</span><strong id="mapNaval">0</strong></div>
+            <div><span>HOSTILE</span><strong id="mapHostile" class="is-hostile">0</strong></div>
+          </div>
+        </div>
+
+        <div class="theatre-readout">
+          <span class="readout-tag">TRACK</span>
+          <span id="mapSelected">NO TRACK SELECTED · CLICK A CONTACT</span>
+        </div>
+
+        <div class="theatre-hint" id="theatreHint" hidden>MAP TILES UNAVAILABLE · VECTOR PICTURE ONLY</div>
+      </section>
+    </main>
+
+    <footer class="radar-foot">
+      <div class="foot-brand">
+        <span class="uplink" id="uplink"><i></i><span id="uplinkText">CONNECTING</span></span>
+        <span class="foot-id">BU-RADAR / NET v1.0</span>
+      </div>
+      <div class="ticker" aria-label="Command traffic">
+        <div class="ticker-track" id="tickerTrack">
+          <span>NETWORK NOMINAL · ALL STATIONS REPORTING</span>
+        </div>
+      </div>
+      <div class="foot-sim">FICTIONAL SIMULATION · NOT REAL DATA</div>
+    </footer>
+  </div>
+
+  <script src="assets/vendor/leaflet.js"></script>
+  <script src="data/europe.js"></script>
+  <script src="data/union-outline.js"></script>
+  <script src="data/geopolitics.js"></script>
+  <script src="data/csb-geometry.js"></script>
+  <script src="js/radar.js?v=4"></script>
+</body>
+</html>

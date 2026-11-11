@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balkan Union — Command Uplink</title>
+  <meta name="description" content="Restricted Balkan Union command uplink. Fictional simulation.">
+  <meta name="theme-color" content="#04080a">
+  <link rel="icon" href="assets/flag.png">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card" aria-labelledby="loginTitle">
+      <div class="login-radar" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+
+      <header class="login-head">
+        <div class="login-flag"><img src="assets/flag.png" alt="Flag of the Balkan Union"></div>
+        <div>
+          <p class="login-org">BALKAN UNION</p>
+          <h1 id="loginTitle">COMMAND UPLINK</h1>
+          <p class="login-sub">AIR · BORDER · WAR CONSOLE</p>
+        </div>
+      </header>
+
+      <p class="login-copy">Restricted control network. Authenticate to reach the command dashboard and publish orders to the public radar.</p>
+
+      <form class="login-form" id="loginForm" autocomplete="on">
+        <label for="commandKey">Command key</label>
+        <input id="commandKey" name="key" type="password" autocomplete="current-password" spellcheck="false" required autofocus>
+        <button type="submit" id="loginBtn">AUTHENTICATE</button>
+        <p class="login-error" id="loginError" role="alert" hidden></p>
+      </form>
+
+      <footer class="login-foot">
+        <span>HMAC SESSION · 12 H EXPIRY · RATE LIMITED</span>
+        <span class="login-sim">FICTIONAL SIMULATION</span>
+      </footer>
+    </section>
+  </main>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

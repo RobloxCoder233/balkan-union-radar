@@ -1,0 +1,13 @@
+{
+  "name": "balkan-union-radar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fictional Balkan Union air and naval radar with a private command uplink.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

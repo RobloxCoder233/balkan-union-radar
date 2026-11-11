@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balkan Union — Air, Border &amp; War Command</title>
+  <meta name="description" content="Fictional Balkan Union command dashboard: air alerts, border incidents, counties, AI leaders and war. Not real data.">
+  <meta name="theme-color" content="#080b10">
+  <link rel="icon" href="assets/flag.png">
+  <link rel="apple-touch-icon" href="assets/flag.png">
+  <link rel="stylesheet" href="assets/vendor/leaflet.css">
+  <link rel="stylesheet" href="css/styles.css?v=3">
+  <link rel="stylesheet" href="css/csb.css?v=2">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Alert console">
+      <div class="sidebar-inner">
+        <header class="brand">
+          <div class="emblem">
+            <img src="assets/flag.png" alt="Flag of the Balkan Union">
+          </div>
+          <div class="brand-text">
+            <h1>BALKAN UNION</h1>
+            <p>Command &amp; Control · Uplink</p>
+          </div>
+          <div class="clock" aria-label="Union time">
+            <span class="clock-time" id="clockTime">--:--:--</span>
+            <span class="clock-date" id="clockDate">—</span>
+            <span class="clock-zone">UNION TIME · CET</span>
+          </div>
+        </header>
+
+        <div class="fiction" role="note">
+          <span class="fiction-mark">SIM</span>
+          Fictional simulation — not real data
+        </div>
+
+        <div class="status-row">
+          <div class="status-badge is-clear" id="statusBadge" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="statusText">ALL CLEAR</span>
+          </div>
+          <button class="siren-btn" id="sirenBtn" aria-pressed="false" title="Arm or disarm the alert siren">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 5 6.5 9H3v6h3.5L11 19V5Z"/>
+              <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+              <path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+            </svg>
+            <span id="sirenLabel">Siren off</span>
+          </button>
+        </div>
+
+        <button class="war-strip" id="warStrip" type="button" hidden>
+          <span class="war-strip-mark">WAR</span>
+          <span class="war-strip-text" id="warStripText">No active front</span>
+          <span class="war-strip-go">OPEN →</span>
+        </button>
+
+        <div class="tabbar" role="tablist" aria-label="Alert console views">
+          <button role="tab" id="tab-alerts" class="tab is-active" aria-controls="panel-alerts" aria-selected="true" data-tab="alerts">
+            Alerts<span class="tab-count" id="tabAirCount">0</span>
+          </button>
+          <button role="tab" id="tab-threats" class="tab" aria-controls="panel-threats" aria-selected="false" tabindex="-1" data-tab="threats">
+            Threats<span class="tab-count is-muted" id="tabThreatCount">0</span>
+          </button>
+          <button role="tab" id="tab-border" class="tab" aria-controls="panel-border" aria-selected="false" tabindex="-1" data-tab="border">
+            Border<span class="tab-count" id="tabBorderCount">0</span>
+          </button>
+          <button role="tab" id="tab-war" class="tab" aria-controls="panel-war" aria-selected="false" tabindex="-1" data-tab="war">
+            War<span class="tab-count is-muted" id="tabWarCount">0</span>
+          </button>
+          <button role="tab" id="tab-ops" class="tab" aria-controls="panel-ops" aria-selected="false" tabindex="-1" data-tab="ops">
+            Ops
+          </button>
+          <button role="tab" id="tab-csb" class="tab" aria-controls="panel-csb" aria-selected="false" tabindex="-1" data-tab="csb">
+            CSB<span class="tab-count is-muted" id="tabCsbCount">0</span>
+          </button>
+        </div>
+
+        <div class="filters" id="filters" aria-label="Threat filters"></div>
+
+        <div class="panels">
+          <section class="panel is-active" id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts">
+            <div class="panel-meta">
+              <span id="alertsMeta">Monitoring 14 member states</span>
+              <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+            </div>
+            <div class="alert-list" id="alertList"></div>
+            <div class="update-line">
+              <span>Network updated</span>
+              <span class="mono" id="alertsUpdated">—</span>
+            </div>
+          </section>
+
+          <section class="panel" id="panel-threats" role="tabpanel" aria-labelledby="tab-threats" hidden>
+            <div class="panel-meta">
+              <span id="threatsMeta">No tracked objects</span>
+              <span class="live-chip"><span class="live-dot"></span>TRACKING</span>
+            </div>
+            <div class="threat-list" id="threatList"></div>
+            <p class="panel-subhead">Recent outcomes</p>
+            <div class="recent-list" id="recentList"></div>
+          </section>
+
+          <section class="panel" id="panel-border" role="tabpanel" aria-labelledby="tab-border" hidden>
+            <div class="panel-meta">
+              <span id="borderMeta">Union external frontier</span>
+              <span class="live-chip is-amber"><span class="live-dot"></span>WATCH</span>
+            </div>
+            <div class="border-summary" id="borderSummary"></div>
+            <p class="panel-subhead">Border incidents</p>
+            <div class="border-list" id="borderList"></div>
+          </section>
+
+          <section class="panel panel-war" id="panel-war" role="tabpanel" aria-labelledby="tab-war" hidden>
+            <div class="war-posture">
+              <div class="war-head">
+                <h2>Strategic deterrent</h2>
+                <span class="live-chip is-amber"><span class="live-dot"></span>READY</span>
+              </div>
+              <div class="deterrent-grid" id="deterrentGrid"></div>
+              <p class="war-note">Belgrade · 50,000 automated factories · Balkan AA Wall · hypersonic arsenal · AI leaders only. Every figure is fiction.</p>
+            </div>
+
+            <div class="war-section">
+              <div class="war-head">
+                <h2>Active fronts</h2>
+                <span class="war-meta" id="warMeta">No wars</span>
+              </div>
+              <div class="war-list" id="activeWars"></div>
+            </div>
+
+            <div class="war-section">
+              <div class="war-head">
+                <h2>AI council</h2>
+                <span class="war-meta" id="offerCount">No offers</span>
+              </div>
+              <div class="offer-list" id="offerList"></div>
+              <div class="ai-feed" id="aiFeed"></div>
+            </div>
+
+            <div class="war-section">
+              <div class="war-head">
+                <h2>Declare war</h2>
+                <span class="war-meta" id="countryMeta">48 states · all AI-led</span>
+              </div>
+              <input class="war-search" id="countrySearch" type="search" placeholder="Search country or AI leader" autocomplete="off" aria-label="Search countries">
+              <div class="country-list" id="warCountries"></div>
+            </div>
+
+            <div class="war-section">
+              <div class="war-head">
+                <h2>Simulation tempo</h2>
+                <button class="mini-btn" id="worldResetBtn" type="button">Reset world</button>
+              </div>
+              <div class="speed-row" id="speedRow">
+                <button class="speed-btn" type="button" data-speed="60">×60</button>
+                <button class="speed-btn is-active" type="button" data-speed="1800">×1800</button>
+                <button class="speed-btn" type="button" data-speed="3600">×3600</button>
+                <button class="speed-btn" type="button" data-speed="7200">×7200</button>
+              </div>
+              <p class="war-meta speed-meta" id="speedLabel">×1800 · 30 min per second</p>
+            </div>
+
+            <div class="war-section">
+              <div class="war-head"><h2>Feed drills</h2><span class="war-meta">local fiction</span></div>
+              <div class="drill-grid">
+                <button class="drill-btn" id="drillAirBtn" type="button">Launch air target</button>
+                <button class="drill-btn" id="drillBorderBtn" type="button">Border incident</button>
+                <button class="drill-btn is-danger" id="drillResetBtn" type="button">Reset air feed</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-ops" id="panel-ops" role="tabpanel" aria-labelledby="tab-ops" hidden>
+            <div class="ops-hero">
+              <div>
+                <h2>Command uplink</h2>
+                <p>Publish meetings, alliances, convoys and radar orders to the network.</p>
+              </div>
+              <div class="ops-side">
+                <span class="ops-link" id="opsLink" data-state="connecting"><i></i><span id="opsLinkText">CONNECTING</span></span>
+                <button class="ops-logout" id="opsLogoutBtn" type="button">LOG OUT</button>
+              </div>
+            </div>
+
+            <div class="ops-card">
+              <div class="war-head">
+                <h2>Defence condition</h2>
+                <span class="war-meta" id="opsCondition">GREEN</span>
+              </div>
+              <div class="ops-grid is-four">
+                <button class="ops-btn" type="button" data-condition="GREEN">GREEN</button>
+                <button class="ops-btn" type="button" data-condition="AMBER">AMBER</button>
+                <button class="ops-btn" type="button" data-condition="RED">RED</button>
+                <button class="ops-btn" type="button" data-condition="AUTO">AUTO</button>
+              </div>
+              <div class="ops-grid is-two">
+                <button class="ops-btn" type="button" data-drill="air">AIR DRILL</button>
+                <button class="ops-btn" type="button" data-drill="naval">NAVAL DRILL</button>
+              </div>
+              <div class="ops-grid is-two">
+                <button class="ops-btn" id="opsSilenceBtn" type="button" aria-pressed="false">SILENCE SIREN</button>
+                <button class="ops-btn" id="opsReloadBtn" type="button">RELOAD STATE</button>
+              </div>
+              <form class="ops-broadcast" id="opsBroadcastForm">
+                <input id="opsMessage" maxlength="200" placeholder="Broadcast to radar ticker" autocomplete="off" aria-label="Broadcast message">
+                <button class="ops-btn is-primary" type="submit">SEND</button>
+              </form>
+            </div>
+
+            <div class="ops-card">
+              <div class="war-head">
+                <h2>Meetings</h2>
+                <span class="war-meta" id="opsMeetingMeta">0 scheduled</span>
+              </div>
+              <form class="ops-form" id="opsMeetingForm">
+                <input name="title" maxlength="90" placeholder="Meeting title" required>
+                <div class="ops-form-row">
+                  <input name="when" maxlength="40" placeholder="When · 20:00 CET">
+                  <input name="attendees" maxlength="160" placeholder="Attendees">
+                </div>
+                <textarea name="agenda" maxlength="500" rows="2" placeholder="Agenda"></textarea>
+                <button class="ops-btn is-primary" type="submit">SCHEDULE MEETING</button>
+              </form>
+              <div class="ops-list" id="opsMeetings"></div>
+            </div>
+
+            <div class="ops-card">
+              <div class="war-head">
+                <h2>Alliances</h2>
+                <span class="war-meta" id="opsAllianceMeta">0 set</span>
+              </div>
+              <form class="ops-form is-inline" id="opsAllianceForm">
+                <select name="countryId" id="opsAllianceCountry" aria-label="Country"></select>
+                <select name="status" aria-label="Alliance status">
+                  <option value="allied">Allied</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="hostile">Hostile</option>
+                </select>
+                <button class="ops-btn" type="submit">SET</button>
+              </form>
+              <div class="ops-list" id="opsAlliances"></div>
+            </div>
+
+            <div class="ops-card">
+              <div class="war-head">
+                <h2>Deliveries</h2>
+                <span class="war-meta" id="opsDeliveryMeta">0 queued</span>
+              </div>
+              <form class="ops-form" id="opsDeliveryForm">
+                <select name="destination" id="opsDeliveryDestination" aria-label="Destination"></select>
+                <div class="ops-form-row is-three">
+                  <select name="cargo" aria-label="Cargo">
+                    <option value="munitions">Munitions</option>
+                    <option value="fuel">Fuel</option>
+                    <option value="food">Food</option>
+                    <option value="medical">Medical</option>
+                    <option value="parts">Factory parts</option>
+                    <option value="troops">Troop rotation</option>
+                  </select>
+                  <input name="qty" type="number" min="1" max="1000000" value="120" aria-label="Quantity">
+                  <input name="etaHours" type="number" min="1" max="240" value="12" aria-label="ETA hours">
+                </div>
+                <button class="ops-btn is-primary" type="submit">DISPATCH CONVOY</button>
+              </form>
+              <div class="ops-list" id="opsDeliveries"></div>
+            </div>
+
+            <p class="ops-note">This console is the only write point. The public radar is read-only and receives changes instantly through the same server.</p>
+          </section>
+
+          <section class="panel panel-csb" id="panel-csb" role="tabpanel" aria-labelledby="tab-csb" hidden>
+            <div class="csb-hero">
+              <div class="csb-hero-main">
+                <p class="csb-kicker">External live feed · Kingdom of Carl's Spelling Bee</p>
+                <h2>CSB offensive watch</h2>
+                <p>CSB strikes against Dutch Union territory, pulled live from the Carl's Spelling Bee alert network.</p>
+              </div>
+              <div class="csb-hero-side">
+                <span class="csb-link" id="csbLink" data-state="connecting"><i></i><span id="csbLinkText">CONNECTING</span></span>
+                <span class="csb-hold"><b>WARS HELD</b> · 0 fronts</span>
+              </div>
+            </div>
+
+            <div class="csb-hold-note">
+              <span class="csb-hold-mark">HOLD</span>
+              Observation only. This uplink cannot declare war, open a front or move your troops.
+            </div>
+
+            <div class="csb-kpis" id="csbKpis"></div>
+
+            <div class="csb-banner" id="csbBanner" hidden></div>
+
+            <div class="csb-section">
+              <div class="csb-head"><h3>Dutch Union under attack</h3><span id="csbTargetMeta">—</span></div>
+              <div class="csb-list" id="csbTargets">
+                <p class="csb-empty">Waiting for CSB uplink…</p>
+              </div>
+            </div>
+
+            <div class="csb-section">
+              <div class="csb-head"><h3>Incoming vectors</h3><span id="csbIncomingMeta">—</span></div>
+              <div class="csb-list" id="csbIncoming"></div>
+            </div>
+
+            <div class="csb-section">
+              <div class="csb-head"><h3>Recent outcomes</h3><span id="csbRecentMeta">—</span></div>
+              <div class="csb-list" id="csbRecent"></div>
+            </div>
+
+            <div class="csb-section">
+              <div class="csb-head">
+                <h3>Map overlay</h3>
+                <button class="mini-btn is-accept" id="csbOverlayBtn" type="button" aria-pressed="true">ON</button>
+              </div>
+              <p class="csb-note">Red vectors show launched or inbound CSB strikes. Rings mark targets; diamonds mark CSB launch batteries. The overlay never changes borders, ownership or wars.</p>
+            </div>
+
+            <details class="csb-details">
+              <summary>CSB launch batteries <span id="csbSitesMeta">—</span></summary>
+              <div class="csb-list" id="csbSites"></div>
+            </details>
+
+            <details class="csb-details">
+              <summary>Weapons in play <span id="csbWeaponsMeta">—</span></summary>
+              <div class="csb-list" id="csbWeapons"></div>
+            </details>
+
+            <details class="csb-details" id="csbEndpointsBox">
+              <summary>Endpoint console</summary>
+              <div class="csb-endpoints" id="csbEndpoints"></div>
+              <div class="csb-json-head">
+                <span id="csbJsonMeta">Select an endpoint to inspect the server proxy response.</span>
+                <a class="csb-raw" id="csbRawLink" href="/api/csb/snapshot" target="_blank" rel="noopener">OPEN RAW</a>
+              </div>
+              <pre class="csb-json" id="csbJson">No endpoint loaded.</pre>
+            </details>
+
+            <p class="csb-foot">Source: <span id="csbHost">csb-air-alert.onrender.com</span> · API key held server-side · fictional simulation</p>
+          </section>
+        </div>
+
+        <footer class="sidebar-foot">
+          <span>BU-CD / COMMAND NETWORK · v4.0</span>
+          <span class="foot-sim">SIMULATION</span>
+        </footer>
+      </div>
+    </aside>
+
+    <main class="map-shell">
+      <div id="map" aria-label="Map of Balkan Union alert zones"></div>
+
+      <div class="map-hud" aria-hidden="true">
+        <div class="hud-live"><span class="live-dot"></span> BU COMMAND NET · 14 MEMBERS</div>
+        <div class="hud-stats">
+          <div class="hud-stat"><strong id="hudAir">0</strong><span>AIR ALERTS</span></div>
+          <div class="hud-stat"><strong id="hudBorder">0</strong><span>FRONTIER</span></div>
+          <div class="hud-stat"><strong id="hudTracks">0</strong><span>TRACKS</span></div>
+          <div class="hud-stat"><strong id="hudFronts">0</strong><span>FRONTS</span></div>
+          <div class="hud-stat"><strong id="hudCounties">0</strong><span>COUNTIES</span></div>
+        </div>
+      </div>
+
+      <div class="legend" id="legend" aria-hidden="true">
+        <div class="legend-title">KEY</div>
+        <div class="legend-row"><span class="swatch-line"></span>Union frontier</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#17376b"></span>Balkan Union</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#4a3212"></span>Dutch Union</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#35204a"></span>Kingdom of CSB</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#41181f"></span>United Kingdom</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#3a3512"></span>Ukraine</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#123a37"></span>Türkiye</div>
+        <div class="legend-row"><span class="swatch-fill" style="--c:#111823"></span>Non-aligned</div>
+        <div class="legend-sep"></div>
+        <div class="legend-row"><span class="swatch-spike"></span>Capture front</div>
+        <div class="legend-row"><span class="swatch-dot" style="--c:#e11d1d"></span>Ballistic missile</div>
+        <div class="legend-row"><span class="swatch-dot" style="--c:#f97316"></span>Cruise missile</div>
+        <div class="legend-row"><span class="swatch-dot" style="--c:#d946ef"></span>Jet drone</div>
+        <div class="legend-row"><span class="swatch-dot" style="--c:#eab308"></span>Shahed drone</div>
+      </div>
+
+      <div class="watermark">
+        <img src="assets/flag.png" alt="">
+        <div>
+          <strong>BU ALERTS</strong>
+          <span>fictional simulation</span>
+        </div>
+      </div>
+
+      <div class="toasts" id="toasts" aria-live="assertive" aria-atomic="false"></div>
+
+      <div class="map-fallback" id="mapFallback" hidden>
+        <strong>Map library unavailable</strong>
+        <span>Check the local vendor assets, then reload.</span>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/vendor/leaflet.js"></script>
+  <script src="data/geopolitics.js"></script>
+  <script src="data/europe.js"></script>
+  <script src="data/counties.js"></script>
+  <script src="data/union-outline.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/war.js?v=2"></script>
+  <script src="js/app.js"></script>
+  <script src="js/panel.js"></script>
+  <script src="js/csb.js?v=5"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: balkan-union-radar
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PANEL_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: CSB_API_KEY
+        sync: false
